@@ -407,3 +407,12 @@ variants = client.fetch_str_variants(use_cache=False)
 - GIAB Consortium for validation datasets
 - Biopython team for Entrez utilities
 
+## Developers
+
+- Brandon Tang 
+- Dennis Kritchko
+- Dixon Snider
+- Satvik Garg
+- Winston Thov
+
+Huge thank you to Jan Fridman at UBC for assisting in all the biological components of this project 
