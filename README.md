@@ -1,11 +1,6 @@
-# CMPT 340 Genomic Variant Analysis Project
+# Mutect: Predicting and Visualizing Short Tandem Repeats in Long Read Sequences
 
 A comprehensive pipeline for fetching, processing, and analyzing genomic variants from the NCBI dbVar database, with a focus on short tandem repeats (STRs) and deletion pathogenicity prediction.
-
-## Important Links
-
-| [Timesheet](https://1sfu-my.sharepoint.com/:x:/g/personal/hamarneh_sfu_ca/EU70goN2XIhPkvvNTcWCBqwBRplUtuUpRVMz67exnPYWYw) | [Slack channel](https://cmpt340fall2025.slack.com/archives/C09F1MARAVB) | [Project report](https://www.overleaf.com/6115343866qyrhysrdstgx#fae1ae) |
-|-----------|---------------|-------------------------|
 
 ## Table of Contents
 1. [Overview](#overview)
