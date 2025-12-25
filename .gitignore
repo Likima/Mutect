@@ -169,6 +169,6 @@ cython_debug/
 *.vcf
 *.tbi
 
-*.json
+# *.json
 !web/frontend/package-lock.json
 !web/frontend/package.json

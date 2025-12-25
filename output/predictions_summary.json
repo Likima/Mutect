@@ -1,0 +1,204 @@
+{
+  "total_sequences": 1000,
+  "predicted_strs": 113,
+  "predicted_non_strs": 887,
+  "average_str_probability": 0.5787182890855458,
+  "threshold": 0.5,
+  "motif_statistics": {
+    "unique_motifs": 7,
+    "most_common_motifs": {
+      "TCCAT": 33,
+      "ATTCC": 26,
+      "TTCCA": 26,
+      "CATTC": 18,
+      "CTCCA": 6,
+      "CCATT": 3,
+      "TTCCG": 1
+    },
+    "motif_length_distribution": {
+      "5": 113
+    }
+  },
+  "top_20_str_predictions": [
+    {
+      "sequence": "CCACTCAGTTCCAGTCCATTCCAACCCTCTCCATTCCATTCCATTCCATTTCATTCTATGCCACTCCATTCCATTCCATTCCACGACATTCCATTCCTAT",
+      "probability": 0.7148333333333334,
+      "repeat_motif": "TCCAT",
+      "repeat_count": 9,
+      "repeat_length": 45,
+      "chromosome": "chr20",
+      "position": 64136
+    },
+    {
+      "sequence": "CTCCACTGCACTCTTTCCACTCCACCCCATTCCAATCCACTCTTCTCCACTCCATTCATTTCACTCCATTCCTCTCCACTCCATTCCGCTCCACTCCCCT",
+      "probability": 0.6953333333333334,
+      "repeat_motif": "CATTC",
+      "repeat_count": 7,
+      "repeat_length": 35,
+      "chromosome": "chr20",
+      "position": 63868
+    },
+    {
+      "sequence": "TCCAATCCACTTCACTCCATTCCACTTCTCTCCTTTCCAATCCACTCCATTCCATTCCTTTCCAATCCATTCCATTCCACTACATTCCATTCCACTCTAC",
+      "probability": 0.6953333333333334,
+      "repeat_motif": "TTCCA",
+      "repeat_count": 7,
+      "repeat_length": 35,
+      "chromosome": "chr20",
+      "position": 63901
+    },
+    {
+      "sequence": "TTCCATTCCATTCCGTTCCATTCCATTCCATTGCATTCCAGTCCTCTCCATTTCATTAGCTTCCATTCCTCTCCATTCCATTCCACTCCAGTCTATTCCT",
+      "probability": 0.6953333333333334,
+      "repeat_motif": "TTCCA",
+      "repeat_count": 7,
+      "repeat_length": 35,
+      "chromosome": "chr20",
+      "position": 63901
+    },
+    {
+      "sequence": "TACTCCTCTCCACTACAATCCATTCCTTTCCAATGCATTCCACACCATTCCATTCCATTCTACTCCATTTTGTTCCATTCCACTCCACTCCTTTTCCGTT",
+      "probability": 0.6953333333333334,
+      "repeat_motif": "TTCCA",
+      "repeat_count": 8,
+      "repeat_length": 40,
+      "chromosome": "chr20",
+      "position": 66879
+    },
+    {
+      "sequence": "CCTTTCCATTCCACTCTATTCCACGCTACTCCACTCAATTCCACTCCACTCCATTCGTTTCCACTCCACTCCACTCGATTCCATTCCATTCCATTCAACT",
+      "probability": 0.6928333333333333,
+      "repeat_motif": "CATTC",
+      "repeat_count": 9,
+      "repeat_length": 45,
+      "chromosome": "chr20",
+      "position": 60241
+    },
+    {
+      "sequence": "CCTTTCTATTTTATTCAACTTCCCTCATCTCAATTCTCTTCCACTTGACTCCAATCCACTCCACTCCACTTCACTCCACTCCATTCCCCTCTACTCCACT",
+      "probability": 0.6928333333333333,
+      "repeat_motif": "TTCCA",
+      "repeat_count": 9,
+      "repeat_length": 45,
+      "chromosome": "chr20",
+      "position": 60264
+    },
+    {
+      "sequence": "ACTCCACTCCATTCCATTCTACTCTACTCCATTCCACTAAATTCCTTTACATTCTACTCCACACCACTCCTTTCCAATCCACTCCATTGCATTTCGTTGC",
+      "probability": 0.6928333333333333,
+      "repeat_motif": "TCCAT",
+      "repeat_count": 13,
+      "repeat_length": 65,
+      "chromosome": "chr20",
+      "position": 65009
+    },
+    {
+      "sequence": "TATTCCTATCCACTCCAGTCCACTCCATTCCATTACAATCCACTCAATTTCACTCCATTCCAAACCGTTCCACTCCTTTCCTTTTATTGCATTCCACTCC",
+      "probability": 0.6928333333333333,
+      "repeat_motif": "ATTCC",
+      "repeat_count": 11,
+      "repeat_length": 55,
+      "chromosome": "chr20",
+      "position": 66376
+    },
+    {
+      "sequence": "CCACTCCAGCCTATTCAATTTCTCTCCATTCCCTTCCATTCCATTCCATTACACCCCAATCCATTCCCCTCCACTCAACGCCACTCCACTCCACTTCCAT",
+      "probability": 0.6928333333333333,
+      "repeat_motif": "ATTCC",
+      "repeat_count": 11,
+      "repeat_length": 55,
+      "chromosome": "chr20",
+      "position": 66440
+    },
+    {
+      "sequence": "CCATTCCATTCCACTGCATTCCTTTCAATTCCTCTCCACTACATTCCATTCCAGTCCATTCTATTCCATTCTACTCCACTCTATTTTATTCCACTCCACT",
+      "probability": 0.6903333333333334,
+      "repeat_motif": "TCCAT",
+      "repeat_count": 10,
+      "repeat_length": 50,
+      "chromosome": "chr20",
+      "position": 60246
+    },
+    {
+      "sequence": "TTCCAATCGATTCCGTTCCATTCCACTGCAATCCACTCCACTCCACTCCAATACACTCTCCTCCACTGCATTCCACTCCACTACATTCCACTCCCCTCCG",
+      "probability": 0.6903333333333334,
+      "repeat_motif": "TCCAT",
+      "repeat_count": 10,
+      "repeat_length": 50,
+      "chromosome": "chr20",
+      "position": 63976
+    },
+    {
+      "sequence": "CATTCCATTCCATTCCGTTCCATTCCATTGCATTCCATTCCTTTCCACTCCATTCCATTCCATTCCATTCCATTCCATTCCATTCCATTCCATTCCATTA",
+      "probability": 0.6903333333333334,
+      "repeat_motif": "TCCAT",
+      "repeat_count": 10,
+      "repeat_length": 50,
+      "chromosome": "chr20",
+      "position": 64484
+    },
+    {
+      "sequence": "CTACATTCTACTCCACTCCTCTCCATTCCACTCCATTCCTTGCTATTCCATTCTATTCTGTTCCACTCAATTCCATTCCATTCACCTGCCTTCCACTCCA",
+      "probability": 0.6903333333333334,
+      "repeat_motif": "TCCAT",
+      "repeat_count": 10,
+      "repeat_length": 50,
+      "chromosome": "chr20",
+      "position": 64519
+    },
+    {
+      "sequence": "CTTGAATTCCACTCCACTACCTTCCATTCCACTCCCTTCTATCCATTCCACTCTACTCCATTTTATTCCACTCCACAACATTCCCTTCAACTCCATTCCA",
+      "probability": 0.6903333333333334,
+      "repeat_motif": "TCCAT",
+      "repeat_count": 10,
+      "repeat_length": 50,
+      "chromosome": "chr20",
+      "position": 64684
+    },
+    {
+      "sequence": "CACTCCACTCCATTACTCTCCATTCCACTCCTTTCCATTCCATTCCTTTCATTCCACTCAAATTCATTGCATTCCAATCCACTCTATTTGACTACACTCC",
+      "probability": 0.6903333333333334,
+      "repeat_motif": "TTCCA",
+      "repeat_count": 9,
+      "repeat_length": 45,
+      "chromosome": "chr20",
+      "position": 64866
+    },
+    {
+      "sequence": "CACCAATCCATTCCATTCCATTCCATTCCTTTCCTTTCCATTCCATTCCAGTCAACTCCACTCCATTCCATTCCATTCCACTCAAATCCATTCTACTCCA",
+      "probability": 0.6903333333333334,
+      "repeat_motif": "TTCCA",
+      "repeat_count": 9,
+      "repeat_length": 45,
+      "chromosome": "chr20",
+      "position": 65085
+    },
+    {
+      "sequence": "CATTCCATTCATTGTTTTTTCCATTCCATTCCATTCTACTCAATTACATTCAATTCCACTTCATTCCACTCCACTTCACTCCAGTCCACTCCTCCCCACT",
+      "probability": 0.6903333333333334,
+      "repeat_motif": "TCCAT",
+      "repeat_count": 10,
+      "repeat_length": 50,
+      "chromosome": "chr20",
+      "position": 65346
+    },
+    {
+      "sequence": "CTCCACTATACACCACTCCAGTCCACTCCATTCCATTGTATTCCACTCCACTCCAGTCCACTCCATTCTCCTCCACTCTGCTCCATTCAATTCAACTCCC",
+      "probability": 0.6883333333333335,
+      "repeat_motif": "CATTC",
+      "repeat_count": 6,
+      "repeat_length": 30,
+      "chromosome": "chr20",
+      "position": 63901
+    },
+    {
+      "sequence": "CACTCCAATCCATTCCATTCCATTCCATTCCATTCCACTCCAATCCACTCCACTCCAGTCCTCTAAACTTCACTCCGTTCCACTCCATTCCTTTCCACTC",
+      "probability": 0.6878333333333333,
+      "repeat_motif": "ATTCC",
+      "repeat_count": 9,
+      "repeat_length": 45,
+      "chromosome": "chr20",
+      "position": 61497
+    }
+  ]
+}
