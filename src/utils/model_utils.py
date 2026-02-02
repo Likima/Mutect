@@ -1,9 +1,12 @@
 
 import json
+import logging
 from pathlib import Path
 from typing import Any, Dict, List
 
-from src.model.str_classifier import STR_Classifier
+from src.model.str_classifier import STRClassifier
+
+logger = logging.getLogger(__name__)
 
 
 def train_str_classifier(training_data: List[Dict], test_size: float = 0.2, 
@@ -26,7 +29,7 @@ def train_str_classifier(training_data: List[Dict], test_size: float = 0.2,
     print(f"{'='*80}")
     
     # Initialize classifier
-    classifier = STR_Classifier(threshold=threshold)
+    classifier = STRClassifier(threshold=threshold)
     
     # Train model
     results = classifier.train(
@@ -60,20 +63,24 @@ def train_str_classifier(training_data: List[Dict], test_size: float = 0.2,
         }
         json.dump(json_results, f, indent=2)
     
-    print(f"\nResults saved to: {results_path}")
-    
+    logger.info(f"Results saved to: {results_path}")
+
+    # Save the trained model for later reuse
+    model_path = Path(output_dir) / "str_model.joblib"
+    classifier.save(str(model_path))
+
     return {
         'classifier': classifier,
         'results': results
     }
 
 
-def predict_str_sequences(classifier: STR_Classifier, sequences: List[Dict],
+def predict_str_sequences(classifier: STRClassifier, sequences: List[Dict],
                           output_path: str = "output/predictions.json") -> List[Dict]:
     """Make predictions on new sequences with repeat motif detection.
     
     Args:
-        classifier: Trained STR_Classifier
+        classifier: Trained STRClassifier
         sequences: List of sequences to classify
         output_path: Where to save predictions
         
@@ -93,9 +100,7 @@ def predict_str_sequences(classifier: STR_Classifier, sequences: List[Dict],
     try:
         sequences_with_predictions = classifier.predict_with_motifs(sequences)
     except Exception as e:
-        print(f"ERROR during prediction: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Error during prediction: {e}", exc_info=True)
         return sequences
     
     # Count predictions
@@ -181,8 +186,6 @@ def predict_str_sequences(classifier: STR_Classifier, sequences: List[Dict],
         print(f"Prediction summary with motif statistics saved to: {summary_path}")
         
     except Exception as e:
-        print(f"ERROR saving predictions: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Error saving predictions: {e}", exc_info=True)
     
     return sequences_with_predictions

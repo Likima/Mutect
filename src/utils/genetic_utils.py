@@ -140,7 +140,7 @@ def detect_and_merge_duplicate_strs(
         min_overlap: Minimum overlap (in bp) to consider STRs as duplicates
         require_same_chromosome: If True, only merge STRs on same chromosome
         reclassify_merged: If True, re-run classifier on merged sequences
-        classifier: STR_Classifier instance (required if reclassify_merged=True)
+        classifier: STRClassifier instance (required if reclassify_merged=True)
         
     Returns:
         List of deduplicated STR predictions
@@ -328,7 +328,7 @@ def deduplicate_str_predictions(
         max_gap: Maximum gap between STRs to merge (default: 50bp)
         min_overlap: Minimum overlap to consider duplicates (default: 5bp)
         reclassify: Whether to reclassify merged sequences
-        classifier: STR_Classifier instance (required if reclassify=True)
+        classifier: STRClassifier instance (required if reclassify=True)
         
     Returns:
         Deduplicated list of predictions

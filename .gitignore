@@ -151,24 +151,33 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# Project-specific stuff
-*.bam
-*.bai
+# Node.js
+node_modules/
 
-# PyCharm
-#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#  and can be added to the global gitignore or merged into this file.  For a more nuclear
-#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
+# macOS
+.DS_Store
+
+# Claude Code
+.claude/
+
+# PyCharm / JetBrains
 #.idea/
 
-*.fa 
+# Build artifacts
+samtools-*/
+*.tar.bz2
+
+# Genomic data files
+*.bam
+*.bai
+*.fa
 *.fai
 *.fasta
-
 *.vcf
 *.tbi
 
-# *.json
-!web/frontend/package-lock.json
-!web/frontend/package.json
+# ML models
+*.joblib
+
+# Generated output
+output/

@@ -55,9 +55,12 @@ def create_bamlet(bam_path, out_bam_path, chrom, start, end):
     pysam.sort("-o", sorted_path, out_bam_path)
     pysam.index(sorted_path)
 
-    # Replace the unsorted with sorted
+    # Replace the unsorted with sorted, and move the index file too
     os.remove(out_bam_path)
     os.rename(sorted_path, out_bam_path)
+    sorted_index = sorted_path + ".bai"
+    if os.path.exists(sorted_index):
+        os.rename(sorted_index, out_bam_path + ".bai")
 
 
 

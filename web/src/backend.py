@@ -245,6 +245,7 @@ def serve_figure(filename: str) -> Any:
 
 if __name__ == "__main__":
 	port = int(os.environ.get("PORT", "5001"))
-	app.run(host="0.0.0.0", port=port, debug=True)
+	debug = os.environ.get("FLASK_DEBUG", "0").lower() in {"1", "true", "yes"}
+	app.run(host="0.0.0.0", port=port, debug=debug)
 
 

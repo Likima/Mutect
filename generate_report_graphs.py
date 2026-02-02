@@ -30,6 +30,13 @@ FIGURES_DIR = Path("figures")
 FIGURES_DIR.mkdir(exist_ok=True)
 
 
+def _score_ylim(values, margin=0.02):
+    """Compute a y-axis range that fits all *values* with some margin."""
+    lo = min(values) - margin
+    hi = max(values) + margin
+    return [max(0.0, lo), min(1.0 + margin, hi)]
+
+
 def load_json(filepath: str) -> Any:
     """Load JSON file."""
     with open(filepath, 'r') as f:
@@ -47,7 +54,7 @@ def plot_model_performance_metrics(results: Dict):
     # Bar plot of all metrics
     ax1 = axes[0, 0]
     bars = ax1.bar(metrics, values, color=['#2ecc71', '#3498db', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c'])
-    ax1.set_ylim([0.95, 1.0])
+    ax1.set_ylim(_score_ylim(values))
     ax1.set_ylabel('Score')
     ax1.set_title('Test Set Performance Metrics')
     ax1.tick_params(axis='x', rotation=45)
@@ -68,7 +75,7 @@ def plot_model_performance_metrics(results: Dict):
     ax2.set_title('5-Fold Cross-Validation Results')
     ax2.set_ylabel('Score')
     ax2.tick_params(axis='x', rotation=45)
-    ax2.set_ylim([0.95, 1.0])
+    ax2.set_ylim(_score_ylim(cv_data))
     
     # Metrics comparison: Test vs CV mean
     ax3 = axes[1, 0]
@@ -86,7 +93,7 @@ def plot_model_performance_metrics(results: Dict):
     ax3.set_xticks(x)
     ax3.set_xticklabels(test_metrics, rotation=45)
     ax3.legend()
-    ax3.set_ylim([0.95, 1.0])
+    ax3.set_ylim(_score_ylim(test_values + cv_means))
     
     # ROC AUC visualization
     ax4 = axes[1, 1]
@@ -99,7 +106,7 @@ def plot_model_performance_metrics(results: Dict):
                  yerr=[np.std(cv_roc)], fmt='none', color='black', capsize=10)
     ax4.set_ylabel('ROC AUC Score')
     ax4.set_title(f'ROC AUC: {roc_auc:.4f}')
-    ax4.set_ylim([0.99, 1.0])
+    ax4.set_ylim(_score_ylim([roc_auc, np.mean(cv_roc)]))
     ax4.text(0, roc_auc, f'{roc_auc:.4f}', ha='center', va='bottom', fontweight='bold')
     ax4.text(1, np.mean(cv_roc), f'{np.mean(cv_roc):.4f}', ha='center', va='bottom', fontweight='bold')
     
@@ -303,7 +310,7 @@ def plot_cross_validation_results(results: Dict):
 
 def plot_feature_comparisons():
     """Plot 5: Feature distributions comparing STR vs Non-STR."""
-    from src.model.str_classifier import STR_Classifier
+    from src.model.str_classifier import STRClassifier
     
     # Load data
     balanced_data = load_json(OUTPUT_DIR / 'balanced_dataset.json')
@@ -314,7 +321,7 @@ def plot_feature_comparisons():
         balanced_data = random.sample(balanced_data, 1000)
     
     # Extract features
-    classifier = STR_Classifier()
+    classifier = STRClassifier()
     X, y, df_features = classifier.prepare_features(balanced_data, for_prediction=False)
     
     # Get feature names
@@ -364,51 +371,11 @@ def plot_feature_comparisons():
     plt.close()
 
 
-def plot_roc_curve():
+def plot_roc_curve(y_test, y_test_pred_proba):
     """Plot ROC curve for the STR classifier."""
-    from src.model.str_classifier import STR_Classifier
-    from sklearn.model_selection import train_test_split
-    
     print("Generating ROC curve...")
-    print("  Loading balanced dataset...")
-    balanced_data = load_json(OUTPUT_DIR / 'balanced_dataset.json')
     results = load_json(OUTPUT_DIR / 'training_results.json')
-    
-    # Initialize classifier
-    classifier = STR_Classifier(threshold=0.5)
-    
-    # Prepare features
-    print("  Preparing features...")
-    X, y, df_features = classifier.prepare_features(balanced_data, for_prediction=False)
-    
-    # Split data the same way as during training (random_state=42)
-    print("  Splitting data (matching training split)...")
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
-    
-    # Scale features
-    X_train_scaled = classifier.scaler.fit_transform(X_train)
-    X_test_scaled = classifier.scaler.transform(X_test)
-    
-    # Train model
-    print("  Training model to generate predictions...")
-    from sklearn.ensemble import RandomForestClassifier
-    classifier.model = RandomForestClassifier(
-        n_estimators=100,
-        max_depth=20,
-        min_samples_split=5,
-        min_samples_leaf=2,
-        class_weight='balanced',
-        random_state=42,
-        n_jobs=-1
-    )
-    classifier.model.fit(X_train_scaled, y_train)
-    
-    # Get predictions
-    print("  Generating predictions...")
-    y_test_pred_proba = classifier.model.predict_proba(X_test_scaled)[:, 1]
-    
+
     # Calculate ROC curve
     fpr, tpr, thresholds = roc_curve(y_test, y_test_pred_proba)
     roc_auc = auc(fpr, tpr)
@@ -451,53 +418,49 @@ def plot_roc_curve():
     plt.close()
 
 
+_cached_predictions = None
+
 def get_real_predictions():
-    """Helper function to get real predictions on test set.
-    
+    """Get real predictions on test set (trained once, cached for reuse).
+
     Returns:
         y_test: True labels
         y_test_pred: Predicted labels (binary)
         y_test_pred_proba: Predicted probabilities
     """
-    from src.model.str_classifier import STR_Classifier
+    global _cached_predictions
+    if _cached_predictions is not None:
+        return _cached_predictions
+
+    from src.model.str_classifier import STRClassifier
     from sklearn.model_selection import train_test_split
-    
-    # Load data
+    from sklearn.ensemble import RandomForestClassifier
+
+    print("  Training model for visualizations (one-time)...")
     balanced_data = load_json(OUTPUT_DIR / 'balanced_dataset.json')
-    
-    # Initialize classifier
-    classifier = STR_Classifier(threshold=0.5)
-    
-    # Prepare features
+
+    classifier = STRClassifier(threshold=0.5)
     X, y, df_features = classifier.prepare_features(balanced_data, for_prediction=False)
-    
-    # Split data the same way as during training (random_state=42)
+
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
-    
-    # Scale features
+
     X_train_scaled = classifier.scaler.fit_transform(X_train)
     X_test_scaled = classifier.scaler.transform(X_test)
-    
-    # Train model
-    from sklearn.ensemble import RandomForestClassifier
+
     classifier.model = RandomForestClassifier(
-        n_estimators=100,
-        max_depth=20,
-        min_samples_split=5,
-        min_samples_leaf=2,
-        class_weight='balanced',
-        random_state=42,
-        n_jobs=-1
+        n_estimators=100, max_depth=20, min_samples_split=5,
+        min_samples_leaf=2, class_weight='balanced',
+        random_state=42, n_jobs=-1
     )
     classifier.model.fit(X_train_scaled, y_train)
-    
-    # Get predictions
+
     y_test_pred_proba = classifier.model.predict_proba(X_test_scaled)[:, 1]
     y_test_pred = (y_test_pred_proba >= 0.5).astype(int)
-    
-    return y_test, y_test_pred, y_test_pred_proba
+
+    _cached_predictions = (y_test, y_test_pred, y_test_pred_proba)
+    return _cached_predictions
 
 
 def plot_confusion_matrix():
@@ -574,7 +537,7 @@ def plot_summary_dashboard():
              results['f1_score'], results['roc_auc']]
     colors = ['#2ecc71', '#3498db', '#e74c3c', '#f39c12', '#9b59b6']
     bars = ax1.bar(metrics, values, color=colors, alpha=0.8, edgecolor='black', linewidth=2)
-    ax1.set_ylim([0.95, 1.0])
+    ax1.set_ylim(_score_ylim(values))
     ax1.set_ylabel('Score', fontsize=12, fontweight='bold')
     ax1.set_title('Model Performance Metrics', fontsize=14, fontweight='bold')
     ax1.grid(axis='y', alpha=0.3)
@@ -649,7 +612,7 @@ def plot_summary_dashboard():
     ax6.set_xticks(x)
     ax6.set_xticklabels(metrics_short)
     ax6.legend(fontsize=11)
-    ax6.set_ylim([0.95, 1.0])
+    ax6.set_ylim(_score_ylim(test_vals + cv_means))
     ax6.grid(axis='y', alpha=0.3)
     
     # 7. Feature importance (all)
@@ -684,7 +647,10 @@ def main():
     plot_data_distributions()
     plot_cross_validation_results(results)
     plot_feature_comparisons()
-    plot_roc_curve()
+
+    # Train model once for prediction-based plots
+    y_test, y_test_pred, y_test_pred_proba = get_real_predictions()
+    plot_roc_curve(y_test, y_test_pred_proba)
     plot_confusion_matrix()
     plot_summary_dashboard()
     

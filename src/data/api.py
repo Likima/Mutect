@@ -184,21 +184,3 @@ class DbVarClient:
         stats["variant_types"] = variant_types
         
         return stats
-
-
-def fetch_dbvar_str_entrez(max_results=500):
-    """Legacy function for backward compatibility."""
-    client = DbVarClient()
-    variants = client.fetch_str_variants(max_results=max_results)
-    
-    stats = client.get_variant_stats(variants)
-    logger.info(f"\nVariant Statistics:")
-    logger.info(f"  Total variants: {stats['total']}")
-    logger.info(f"  With gene info: {stats['has_gene']}")
-    logger.info(f"  With placement: {stats['has_placement']}")
-    logger.info(f"  With clinical significance: {stats['has_clinsig']}")
-    
-    if stats.get('variant_types'):
-        logger.info(f"  Variant types: {stats['variant_types']}")
-    
-    return variants

@@ -2,10 +2,13 @@
 from pathlib import Path
 import sys
 import argparse
+import logging
 import pysam
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Any
 import json
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class ReadMetadata:
@@ -193,9 +196,15 @@ def parse_read_to_metadata(read: pysam.AlignedSegment) -> ReadMetadata:
     )
 
 
-def extract_bam_region(bam_file="ftp://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/10XGenomics/NA24385_phased_possorted_bam.bam", 
-                      chromosome="chr20", start=1000000, end=1000100, num_lines=10, 
-                      return_metadata=True, print_reads=True, print_stats=True):
+DEFAULT_BAM_URL = (
+    "ftp://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/"
+    "AshkenazimTrio/HG002_NA24385_son/10XGenomics/NA24385_phased_possorted_bam.bam"
+)
+
+
+def extract_bam_region(bam_file=None, chromosome="chr20", start=1000000,
+                      end=1000100, num_lines=10, return_metadata=True,
+                      print_reads=True, print_stats=True):
     """
     Extract reads from a specific region of a BAM file and parse into metadata objects.
     Streams directly from URL without downloading.
@@ -213,6 +222,8 @@ def extract_bam_region(bam_file="ftp://ftp-trace.ncbi.nlm.nih.gov/ReferenceSampl
     Returns:
         BamRegionMetadata object if return_metadata=True, else True/False
     """
+    if bam_file is None:
+        bam_file = DEFAULT_BAM_URL
     try:
         print(f"Opening BAM file: {bam_file}")
         print(f"Extracting region {chromosome}:{start}-{end}")
@@ -339,20 +350,19 @@ def extract_bam_region(bam_file="ftp://ftp-trace.ncbi.nlm.nih.gov/ReferenceSampl
         return True
         
     except ValueError as e:
-        print(f"Error: Invalid BAM file or region - {e}", file=sys.stderr)
+        logger.error(f"Invalid BAM file or region - {e}")
         return None if return_metadata else False
     except IOError as e:
-        print(f"Error: Cannot open BAM file - {e}", file=sys.stderr)
-        print("Note: For FTP URLs, the BAM file must be accessible and may require an index file.", file=sys.stderr)
+        logger.error(f"Cannot open BAM file - {e}")
+        logger.info("For FTP URLs, the BAM file must be accessible and may require an index file.")
         return None if return_metadata else False
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Unexpected error: {e}", exc_info=True)
         return None if return_metadata else False
 
-def extract_sequences_from_bam(bam_file: str, chromosome: str, start: int, end: int, 
-                                max_reads: int = 1000000) -> List[Dict[str, Any]]:
+def extract_sequences_from_bam(bam_file: str, chromosome: str, start: int, end: int,
+                                max_reads: int = 1000000,
+                                output_file: str = None) -> List[Dict[str, Any]]:
     """Extract sequences from BAM file for training/prediction.
     
     Args:
@@ -415,14 +425,14 @@ def extract_sequences_from_bam(bam_file: str, chromosome: str, start: int, end: 
             })
     
     print(f"\nExtracted {len(sequences)} valid sequences")
-    
-    # Save extracted sequences immediately
-    output_file = "output/extracted_sequences.json"
-    Path(output_file).parent.mkdir(parents=True, exist_ok=True)
-    with open(output_file, 'w') as f:
-        json.dump(sequences, f, indent=2, default=str)
-    print(f"Saved extracted sequences to: {output_file}")
-    
+
+    # Save extracted sequences if output path provided
+    if output_file:
+        Path(output_file).parent.mkdir(parents=True, exist_ok=True)
+        with open(output_file, 'w') as f:
+            json.dump(sequences, f, indent=2, default=str)
+        print(f"Saved extracted sequences to: {output_file}")
+
     return sequences
 
 
@@ -431,9 +441,9 @@ def main():
         description="Extract reads from a BAM file region and parse into metadata objects"
     )
     parser.add_argument(
-        "bam_file", 
-        nargs='?', 
-        default="ftp://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/10XGenomics/NA24385_phased_possorted_bam.bam",
+        "bam_file",
+        nargs='?',
+        default=DEFAULT_BAM_URL,
         help="Path to the BAM file or URL"
     )
     parser.add_argument(

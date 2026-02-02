@@ -13,19 +13,24 @@ def main():
 
     loci = []
     for i, entry in enumerate(preds):
-        seq = entry["sequence"]
-        chrom = entry["reference_name"]
-        start = entry["reference_start"]
-        probability = entry["str_probability"]
+        seq = entry.get("sequence", "")
+        if not seq:
+            continue
+        chrom = (entry.get("chromosome") or entry.get("reference_name")
+                 or entry.get("chr") or "unknown")
+        start = (entry.get("position") or entry.get("reference_start")
+                 or entry.get("start") or 0)
+        start = int(start)
+        probability = entry.get("str_probability", 0.0)
 
         loci.append({
             "locusId": f"locus_{i+1}",
             "chrom": chrom,
             "start": start,
-            "end": start + len(seq),       # simplistic but valid
+            "end": start + len(seq),
             "repeatSequence": seq,
             "probability": probability,
-            "readName": entry.get("query_name", "unknown")
+            "readName": entry.get("query_name", entry.get("read_name", "unknown"))
         })
 
     out = {"loci": loci}

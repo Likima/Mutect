@@ -222,11 +222,3 @@ class VariantProcessor:
     def to_dict_list(cls, variants: List[ProcessedVariant]) -> List[Dict]:
         """Convert ProcessedVariant objects to dictionaries."""
         return [v.to_dict() for v in variants]
-
-
-# Backward compatibility
-def pass_through_variants(variants: List[Dict]) -> List[Dict]:
-    """Legacy function for backward compatibility."""
-    processor = VariantProcessor()
-    processed = processor.process_variants(variants)
-    return processor.to_dict_list(processed)

@@ -1,3 +1,7 @@
+import logging
+from pathlib import Path
+
+import joblib
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split, cross_validate, KFold
@@ -8,7 +12,9 @@ from typing import List, Dict, Any
 import re
 from collections import Counter
 
-class STR_Classifier:
+logger = logging.getLogger(__name__)
+
+class STRClassifier:
     """Random Forest classifier that predicts whether a genetic sequence is a Short Tandem Repeat (STR)."""
 
     def __init__(self, threshold=0.5):
@@ -74,8 +80,8 @@ class STR_Classifier:
                 # Update best repeat if this is better
                 total_length = count * unit_len
                 if count >= 2 and total_length > best_repeat['length']:
-                    # Calculate purity (perfect repeats / total length in repeat region)
-                    purity = count / (total_length / unit_len) if total_length > 0 else 0
+                    # Calculate purity: fraction of the sequence covered by perfect tandem copies
+                    purity = total_length / len(sequence) if len(sequence) > 0 else 0.0
                     best_repeat = {
                         'count': count,
                         'length': total_length,
@@ -452,5 +458,42 @@ class STR_Classifier:
             }
             
             results.append(result)
-        
+
         return results
+
+    def save(self, path: str) -> None:
+        """Save trained model, scaler, and metadata to disk.
+
+        Args:
+            path: File path to save to (e.g. 'output/str_model.joblib')
+        """
+        if self.model is None:
+            raise ValueError("Model not trained yet. Call train() first.")
+
+        state = {
+            'model': self.model,
+            'scaler': self.scaler,
+            'feature_names': self.feature_names,
+            'threshold': self.threshold,
+        }
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        joblib.dump(state, path)
+        logger.info(f"Model saved to {path}")
+
+    @classmethod
+    def load(cls, path: str) -> "STRClassifier":
+        """Load a previously saved model from disk.
+
+        Args:
+            path: File path to load from
+
+        Returns:
+            STRClassifier instance ready for prediction
+        """
+        state = joblib.load(path)
+        instance = cls(threshold=state['threshold'])
+        instance.model = state['model']
+        instance.scaler = state['scaler']
+        instance.feature_names = state['feature_names']
+        logger.info(f"Model loaded from {path}")
+        return instance

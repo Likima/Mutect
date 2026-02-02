@@ -271,25 +271,3 @@ class VariantSummarizer:
         print("\nClinical Significance Summary:")
         for significance, count in sorted(counts.items(), key=lambda x: -x[1]):
             print(f"  {significance}: {count}")
-
-
-# Backward compatibility functions
-def summarize_variants(variants: List[Dict]):
-    """Legacy function for backward compatibility."""
-    VariantSummarizer.print_summary(variants)
-
-
-def filter_str_by_min_length(
-    variants: List[Dict], 
-    min_bp: int = 50, 
-    include_unknown: bool = False
-) -> List[Dict]:
-    """Legacy function for backward compatibility."""
-    strategy = FilterStrategy.INCLUDE_UNKNOWN if include_unknown else FilterStrategy.EXCLUDE_UNKNOWN
-    
-    filter_obj = VariantFilter()
-    result = filter_obj.filter_by_length(variants, min_bp=min_bp, unknown_strategy=strategy)
-    
-    logger.info(result.summary())
-    
-    return result.kept
