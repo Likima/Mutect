@@ -275,38 +275,74 @@ function SequenceHighlight({ sequence, motif }: { sequence: string; motif: strin
 			</div>
 		);
 	}
-	const parts: Array<{ text: string; match: boolean }> = [];
 	const motifLen = cleanMotif.length;
-	let i = 0;
-	while (i < sequence.length) {
-		const next = sequence.indexOf(cleanMotif, i);
-		if (next === -1) {
-			parts.push({ text: sequence.slice(i), match: false });
-			break;
+	const maxMismatches = Math.max(1, Math.floor(motifLen / 2));
+
+	// Annotate each position with the best (lowest) mismatch count of any
+	// qualifying window that covers it.  Infinity = no match.
+	const annotations = new Array<number>(sequence.length).fill(Infinity);
+
+	for (let i = 0; i <= sequence.length - motifLen; i++) {
+		let mismatches = 0;
+		for (let j = 0; j < motifLen; j++) {
+			if (sequence[i + j] !== cleanMotif[j]) mismatches++;
+			if (mismatches > maxMismatches) break;
 		}
-		if (next > i) {
-			parts.push({ text: sequence.slice(i, next), match: false });
+		if (mismatches <= maxMismatches) {
+			for (let j = i; j < i + motifLen; j++) {
+				annotations[j] = Math.min(annotations[j], mismatches);
+			}
 		}
-		parts.push({ text: sequence.slice(next, next + motifLen), match: true });
-		i = next + motifLen;
 	}
+
+	// Build segments from contiguous runs of the same annotation value
+	const parts: Array<{ text: string; mismatches: number }> = [];
+	let curVal = annotations[0];
+	let start = 0;
+	for (let i = 1; i < sequence.length; i++) {
+		if (annotations[i] !== curVal) {
+			parts.push({ text: sequence.slice(start, i), mismatches: curVal });
+			curVal = annotations[i];
+			start = i;
+		}
+	}
+	parts.push({ text: sequence.slice(start), mismatches: curVal });
+
+	// Collect distinct mismatch levels present (for the legend)
+	const levels = [...new Set(annotations.filter((v) => v !== Infinity))].sort((a, b) => a - b);
+
+	// Compute highlight style: opacity fades linearly from 0.35 (exact) down
+	// to a minimum as mismatches approach the threshold.
+	const hlStyle = (m: number): React.CSSProperties | undefined => {
+		if (m === Infinity) return undefined;
+		const opacity = 0.35 * (1 - m / (maxMismatches + 1));
+		return { background: `rgba(255, 208, 0, ${opacity.toFixed(3)})`, borderRadius: 3, padding: "0 1px" };
+	};
+
 	return (
 		<div>
 			<div style={{ marginBottom: 6, fontSize: 12, opacity: 0.8 }}>
 				Highlighting motif <code>{cleanMotif}</code>
+				{levels.length > 0 && (
+					<span>
+						{" — "}
+						{levels.map((lvl, i) => (
+							<span key={lvl}>
+								{i > 0 && " "}
+								<span style={{ ...hlStyle(lvl), fontSize: 11 }}>
+									{lvl === 0 ? "exact" : `${lvl} mismatch${lvl > 1 ? "es" : ""}`}
+								</span>
+							</span>
+						))}
+					</span>
+				)}
 			</div>
 			<div style={seqBox}>
-				{parts.map((p, idx) =>
-					p.match ? (
-						<span key={idx} style={hl}>
-							<code style={seqCode}>{p.text}</code>
-						</span>
-					) : (
-						<span key={idx}>
-							<code style={seqCode}>{p.text}</code>
-						</span>
-					)
-				)}
+				{parts.map((p, idx) => (
+					<span key={idx} style={hlStyle(p.mismatches)}>
+						<code style={seqCode}>{p.text}</code>
+					</span>
+				))}
 			</div>
 		</div>
 	);
@@ -323,10 +359,5 @@ const seqCode: React.CSSProperties = {
 	fontFamily: "inherit"
 };
 
-const hl: React.CSSProperties = {
-	background: "rgba(255, 208, 0, 0.35)",
-	borderRadius: 3,
-	padding: "0 1px"
-};
 
 

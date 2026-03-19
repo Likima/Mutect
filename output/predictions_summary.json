@@ -1,202 +1,38 @@
 {
-  "total_sequences": 1000,
-  "predicted_strs": 65,
-  "predicted_non_strs": 935,
-  "average_str_probability": 0.5475128205128205,
-  "threshold": 0.5,
+  "total_sequences": 62,
+  "predicted_strs": 1,
+  "predicted_non_strs": 61,
+  "average_str_probability": 0.885332856575648,
+  "threshold": 0.38,
+  "algorithm": "xgboost",
   "motif_statistics": {
-    "unique_motifs": 5,
+    "unique_motifs": 1,
     "most_common_motifs": {
-      "TTCCA": 22,
-      "TCCAT": 19,
-      "ATTCC": 13,
-      "CATTC": 10,
-      "CCATT": 1
+      "ATTCT": 1
     },
     "motif_length_distribution": {
-      "5": 65
+      "5": 1
     }
+  },
+  "clinical_annotations": {
+    "disease_matches": {
+      "Spinocerebellar ataxia 10": 1
+    },
+    "total_disease_matches": 1
   },
   "top_20_str_predictions": [
     {
-      "sequence": "CCACTCAGTTCCAGTCCATTCCAACCCTCTCCATTCCATTCCATTCCATTTCATTCTATGCCACTCCATTCCATTCCATTCCACGACATTCCATTCCTAT",
-      "probability": 0.6409126984126985,
-      "repeat_motif": "TCCAT",
-      "repeat_count": 9,
-      "repeat_length": 45,
-      "chromosome": "chr20",
-      "position": 64136
-    },
-    {
-      "sequence": "ATTCCATTCCAATCCTCTCCACTTCATTCCATTCCACTCCGGTCCAATCCACTCGATTCCAATCCACTCCATTCCACTCCATTCAATTTTCTTCCACTTT",
-      "probability": 0.5950793650793651,
-      "repeat_motif": "TTCCA",
-      "repeat_count": 10,
-      "repeat_length": 50,
-      "chromosome": "chr20",
-      "position": 63094
-    },
-    {
-      "sequence": "CATCCCGTTCCACTGCATTCCATTCCATCCACTCCACTCCACTATGTTCCACTCCATTCCATTCCACTCCACTCCACTCCACCCACTCCATTCCATTCGA",
-      "probability": 0.5950793650793651,
-      "repeat_motif": "TCCAT",
-      "repeat_count": 12,
-      "repeat_length": 60,
-      "chromosome": "chr20",
-      "position": 65241
-    },
-    {
-      "sequence": "ATCCATTTCATTCCTCTCGACTCCATTCAAATCCACTCCATTCTATTCCATTCCCTTCCATTGCATTCCATTCCATTCCACTTCACACCCTTTCCTTGCA",
-      "probability": 0.5900793650793651,
-      "repeat_motif": "TTCCA",
-      "repeat_count": 10,
-      "repeat_length": 50,
-      "chromosome": "chr20",
-      "position": 60385
-    },
-    {
-      "sequence": "TATTCCATTCCACTCCTCTCCGCTCCACTGCATTCCATTCCTGTCCACTCCACTCCACTCCATTCCATTCCTTTCCATTCCATTCCTTTCCATTGCATTC",
-      "probability": 0.5900793650793651,
-      "repeat_motif": "CATTC",
-      "repeat_count": 9,
-      "repeat_length": 45,
-      "chromosome": "chr20",
-      "position": 60733
-    },
-    {
-      "sequence": "TATTCCTATCCACTCCAGTCCACTCCATTCCATTACAATCCACTCAATTTCACTCCATTCCAAACCGTTCCACTCCTTTCCTTTTATTGCATTCCACTCC",
-      "probability": 0.5867460317460318,
-      "repeat_motif": "ATTCC",
-      "repeat_count": 11,
-      "repeat_length": 55,
-      "chromosome": "chr20",
-      "position": 66376
-    },
-    {
-      "sequence": "CCACTCCAGCCTATTCAATTTCTCTCCATTCCCTTCCATTCCATTCCATTACACCCCAATCCATTCCCCTCCACTCAACGCCACTCCACTCCACTTCCAT",
-      "probability": 0.5867460317460318,
-      "repeat_motif": "ATTCC",
-      "repeat_count": 11,
-      "repeat_length": 55,
-      "chromosome": "chr20",
-      "position": 66440
-    },
-    {
-      "sequence": "CCATTCCATTCCACTGCATTCCTTTCAATTCCTCTCCACTACATTCCATTCCAGTCCATTCTATTCCATTCTACTCCACTCTATTTTATTCCACTCCACT",
-      "probability": 0.5850793650793651,
-      "repeat_motif": "TCCAT",
-      "repeat_count": 10,
-      "repeat_length": 50,
-      "chromosome": "chr20",
-      "position": 60246
-    },
-    {
-      "sequence": "CCTTTCTATTTTATTCAACTTCCCTCATCTCAATTCTCTTCCACTTGACTCCAATCCACTCCACTCCACTTCACTCCACTCCATTCCCCTCTACTCCACT",
-      "probability": 0.5850793650793651,
-      "repeat_motif": "TTCCA",
-      "repeat_count": 9,
-      "repeat_length": 45,
-      "chromosome": "chr20",
-      "position": 60264
-    },
-    {
-      "sequence": "CTCCACTGCACTCCATTCCATTCCATTCCACTCCACTTCACTCCTCTACATTCCATTACATCTGATTCCATTCCAGTCCATTCCACTTCACACCACACCT",
-      "probability": 0.5850793650793651,
-      "repeat_motif": "TTCCA",
-      "repeat_count": 8,
-      "repeat_length": 40,
-      "chromosome": "chr20",
-      "position": 60283
-    },
-    {
-      "sequence": "CACTCCAATCCATTCCATTCCATTCCATTCCATTCCACTCCAATCCACTCCACTCCAGTCCTCTAAACTTCACTCCGTTCCACTCCATTCCTTTCCACTC",
-      "probability": 0.5850793650793651,
-      "repeat_motif": "ATTCC",
-      "repeat_count": 9,
-      "repeat_length": 45,
-      "chromosome": "chr20",
-      "position": 61497
-    },
-    {
-      "sequence": "CTCCACTGCACTCTTTCCACTCCACCCCATTCCAATCCACTCTTCTCCACTCCATTCATTTCACTCCATTCCTCTCCACTCCATTCCGCTCCACTCCCCT",
-      "probability": 0.5850793650793651,
-      "repeat_motif": "CATTC",
-      "repeat_count": 7,
-      "repeat_length": 35,
-      "chromosome": "chr20",
-      "position": 63868
-    },
-    {
-      "sequence": "CCAGTCCATTCCACTACACTCCACACCATTCCAATCCAATCCACTCCGTTCCATTCCACTCCACTCCATTCCACTCAATTCCAAACCATTCCACATCACT",
-      "probability": 0.5850793650793651,
-      "repeat_motif": "CATTC",
-      "repeat_count": 9,
-      "repeat_length": 45,
-      "chromosome": "chr20",
-      "position": 64066
-    },
-    {
-      "sequence": "ACTCCACTCCATTCCATTCTACTCTACTCCATTCCACTAAATTCCTTTACATTCTACTCCACACCACTCCTTTCCAATCCACTCCATTGCATTTCGTTGC",
-      "probability": 0.5850793650793651,
-      "repeat_motif": "TCCAT",
-      "repeat_count": 13,
-      "repeat_length": 65,
-      "chromosome": "chr20",
-      "position": 65009
-    },
-    {
-      "sequence": "CATTCCATTCATTGTTTTTTCCATTCCATTCCATTCTACTCAATTACATTCAATTCCACTTCATTCCACTCCACTTCACTCCAGTCCACTCCTCCCCACT",
-      "probability": 0.5850793650793651,
-      "repeat_motif": "TCCAT",
-      "repeat_count": 10,
-      "repeat_length": 50,
-      "chromosome": "chr20",
-      "position": 65346
-    },
-    {
-      "sequence": "TACTCCTCTCCACTACAATCCATTCCTTTCCAATGCATTCCACACCATTCCATTCCATTCTACTCCATTTTGTTCCATTCCACTCCACTCCTTTTCCGTT",
-      "probability": 0.5850793650793651,
-      "repeat_motif": "TTCCA",
-      "repeat_count": 8,
-      "repeat_length": 40,
-      "chromosome": "chr20",
-      "position": 66879
-    },
-    {
-      "sequence": "TTCCTTTTCATTCCAATCCAGTGCATTCCACTCCATTCCAATCCACTCCACTCCATTCCATTCCACTCCATTCCTTTCCATTCCACTCTATTCCCTTCCA",
-      "probability": 0.5817460317460318,
-      "repeat_motif": "ATTCC",
-      "repeat_count": 11,
-      "repeat_length": 55,
-      "chromosome": "chr20",
-      "position": 60499
-    },
-    {
-      "sequence": "CCTTTCCATTCCACTCTATTCCACGCTACTCCACTCAATTCCACTCCACTCCATTCGTTTCCACTCCACTCCACTCGATTCCATTCCATTCCATTCAACT",
-      "probability": 0.5784126984126984,
-      "repeat_motif": "CATTC",
-      "repeat_count": 9,
-      "repeat_length": 45,
-      "chromosome": "chr20",
-      "position": 60241
-    },
-    {
-      "sequence": "TCCAATCCACTTCACTCCATTCCACTTCTCTCCTTTCCAATCCACTCCATTCCATTCCTTTCCAATCCATTCCATTCCACTACATTCCATTCCACTCTAC",
-      "probability": 0.5784126984126984,
-      "repeat_motif": "TTCCA",
-      "repeat_count": 7,
-      "repeat_length": 35,
-      "chromosome": "chr20",
-      "position": 63901
-    },
-    {
-      "sequence": "CTCCACTATACACCACTCCAGTCCACTCCATTCCATTGTATTCCACTCCACTCCAGTCCACTCCATTCTCCTCCACTCTGCTCCATTCAATTCAACTCCC",
-      "probability": 0.5784126984126984,
-      "repeat_motif": "CATTC",
-      "repeat_count": 6,
-      "repeat_length": 30,
-      "chromosome": "chr20",
-      "position": 63901
+      "sequence": "CCATGTATTGCTAGTCTGTGAGGTTCCTTCAGGTTTGGAACTGTCTTTTATTAATCTTTACATCTCCAGCACCTAGCGCAGGGCTTAGCAACAATTTTTG",
+      "probability": 0.885332856575648,
+      "repeat_motif": "ATTCT",
+      "repeat_count": 983,
+      "repeat_length": 1490,
+      "canonical_fraction": 0.9949135300101729,
+      "interruption_count": 53,
+      "chromosome": "chr22",
+      "position": 45670830,
+      "redatlas_disease": "Spinocerebellar ataxia 10",
+      "redatlas_allele_class": "full_mutation"
     }
   ]
 }

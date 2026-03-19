@@ -1,0 +1,112 @@
+# Mutect Pipeline Configuration
+# ================================
+
+# Data acquisition
+data:
+  max_variants: 3000
+  min_length_bp: 50
+  max_length_bp: 10000000
+  cache_dir: ./cache
+  use_cache: true
+
+# BAM processing
+bam:
+  default_chromosome: chr20
+  default_start: 10000000
+  default_end: 10100000
+  max_reads: 1000
+
+# Model training
+model:
+  # Algorithm: "random_forest", "xgboost", or "lightgbm"
+  algorithm: xgboost
+  test_size: 0.2
+  cv_folds: 5
+  threshold: 0.5
+  random_state: 42
+
+  # Hyperparameter tuning via Optuna
+  tuning:
+    enabled: true
+    n_trials: 50
+    timeout_seconds: 300
+
+  # XGBoost defaults (overridden by tuning if enabled)
+  xgboost:
+    n_estimators: 200
+    max_depth: 8
+    learning_rate: 0.1
+    subsample: 0.8
+    colsample_bytree: 0.8
+    min_child_weight: 3
+    gamma: 0.1
+    reg_alpha: 0.1
+    reg_lambda: 1.0
+
+  # Random Forest defaults
+  random_forest:
+    n_estimators: 100
+    max_depth: 20
+    min_samples_split: 5
+    min_samples_leaf: 2
+
+  # Probability calibration
+  calibration:
+    enabled: true
+    method: isotonic  # "isotonic" or "sigmoid"
+
+# Feature engineering
+features:
+  # k-mer frequency features
+  kmer:
+    enabled: true
+    sizes: [3, 4]  # tri-mers and tetra-mers
+
+  # CIGAR-string derived features
+  cigar:
+    enabled: true
+
+  # Positional / genomic context features
+  positional:
+    enabled: true
+
+  # TRMotifAnnotator integration
+  trmotif:
+    enabled: true
+    max_unit_length: 6
+    min_unit_length: 1
+    handle_rotations: true
+
+  # STRling-inspired non-overlapping k-mer counting
+  strling_kmer:
+    enabled: true
+
+# REDatlas clinical annotation
+redatlas:
+  enabled: true
+  summary_tsv: data/redatlas/summary_all.tsv
+  population_tsv: data/redatlas/all_REDatlas.tsv
+  max_distance_bp: 1000  # max distance to match a known locus
+
+# Windowed prediction for long reads (ONT / PacBio)
+# Reads longer than long_read_threshold are scanned in overlapping windows
+# to detect STR regions embedded within long reads.
+prediction:
+  window_size: 5000        # window length in bp
+  step_size: 2000          # step between windows (overlap = window - step)
+  long_read_threshold: 10000  # reads > this use windowed prediction
+
+# Prediction output
+output:
+  dir: output
+  save_predictions: true
+  save_strs_only: true
+  save_summary: true
+  deduplicate: true
+  dedup_max_gap: 50
+  dedup_min_overlap: 5
+
+# Reference genome
+reference:
+  fasta: hs37d5.fa
+  assembly: GRCh37
