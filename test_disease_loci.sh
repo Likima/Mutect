@@ -58,6 +58,36 @@ ont_bam() {
     echo "${ONT_BASE}/${sample}-ONT-hg38-R9-LSK110-guppy-sup-${suffix}/${sample}-ONT-hg38-R9-LSK110-guppy-sup-${suffix}.PMDV_FINAL.haplotagged.bam"
 }
 
+# Resolve BAM: prefer local slice, fall back to remote
+resolve_bam() {
+    local local_bam="$1"
+    local remote_bam="$2"
+    if [ -f "$local_bam" ]; then
+        echo "$local_bam"
+    else
+        echo "$remote_bam"
+    fi
+}
+
+# Download a BAM region slice if samtools is available and local BAM doesn't exist
+slice_bam() {
+    local remote_bam="$1"
+    local local_bam="$2"
+    local region="$3"
+    if [ -f "$local_bam" ]; then
+        return 0
+    fi
+    if ! command -v samtools &> /dev/null; then
+        echo -e "${YELLOW}  samtools not found — using remote BAM (slower, may fail)${NC}"
+        return 1
+    fi
+    echo -e "${YELLOW}  Downloading BAM slice: ${local_bam}${NC}"
+    samtools view -b "$remote_bam" "$region" > "$local_bam" 2>/dev/null && \
+    samtools index "$local_bam" 2>/dev/null && \
+    echo -e "${GREEN}  Downloaded and indexed: ${local_bam}${NC}" || \
+    { echo -e "${RED}  Failed to slice BAM${NC}"; rm -f "$local_bam"; return 1; }
+}
+
 # ── Helper ──────────────────────────────────────────────────────────────────
 
 run_test() {
@@ -161,23 +191,20 @@ echo -e "${GREEN}═════════════════════
 
 if [[ "$TEST_FILTER" == "all" || "$TEST_FILTER" == "atxn10" ]]; then
     # HG01122: ATTCT x1043, full_mutation
-    if [ -f "HG01122_ATXN10.bam" ]; then
-        run_test "HG01122_ATXN10" "HG01122_ATXN10.bam" \
-            "chr22" 45790000 45800000 \
-            "SCA10: HG01122 ATTCT x1043 full_mutation" "positive"
-    else
-        run_test "HG01122_ATXN10" "$(ont_bam HG01122 5mC)" \
-            "chr22" 45790000 45800000 \
-            "SCA10: HG01122 ATTCT x1043 full_mutation" "positive"
-    fi
+    slice_bam "$(ont_bam HG01122 5mC)" "HG01122_ATXN10.bam" "chr22:45790000-45800000"
+    run_test "HG01122_ATXN10" "$(resolve_bam HG01122_ATXN10.bam "$(ont_bam HG01122 5mC)")" \
+        "chr22" 45790000 45800000 \
+        "SCA10: HG01122 ATTCT x1043 full_mutation" "positive"
 
     # HG02252: ATTCT x955 (full_mutation) + x511 (reduced_penetrance)
-    run_test "HG02252_ATXN10" "$(ont_bam HG02252 5mC)" \
+    slice_bam "$(ont_bam HG02252 5mC)" "HG02252_ATXN10.bam" "chr22:45790000-45800000"
+    run_test "HG02252_ATXN10" "$(resolve_bam HG02252_ATXN10.bam "$(ont_bam HG02252 5mC)")" \
         "chr22" 45790000 45800000 \
         "SCA10: HG02252 ATTCT x955 full_mutation" "positive"
 
     # HG02345: ATTCT x321, reduced_penetrance
-    run_test "HG02345_ATXN10" "$(ont_bam HG02345 5mC)" \
+    slice_bam "$(ont_bam HG02345 5mC)" "HG02345_ATXN10.bam" "chr22:45790000-45800000"
+    run_test "HG02345_ATXN10" "$(resolve_bam HG02345_ATXN10.bam "$(ont_bam HG02345 5mC)")" \
         "chr22" 45790000 45800000 \
         "SCA10: HG02345 ATTCT x321 reduced_penetrance" "positive"
 fi
@@ -186,33 +213,30 @@ fi
 
 if [[ "$TEST_FILTER" == "all" || "$TEST_FILTER" == "rfc1" ]]; then
     # HG00105: AAAAG x682, full_mutation
-    run_test "HG00105_RFC1" "$(ont_bam HG00105 5mC)" \
+    slice_bam "$(ont_bam HG00105 5mC)" "HG00105_RFC1.bam" "chr4:39343000-39353000"
+    run_test "HG00105_RFC1" "$(resolve_bam HG00105_RFC1.bam "$(ont_bam HG00105 5mC)")" \
         "chr4" 39343000 39353000 \
         "CANVAS: HG00105 AAAAG x682 full_mutation" "positive"
 
     # HG01122: AAAAG x656, full_mutation (same sample as ATXN10!)
-    if [ -f "HG01122_ATXN10.bam" ]; then
-        # Can't use the ATXN10 BAM slice for RFC1 — need the full BAM
-        run_test "HG01122_RFC1" "$(ont_bam HG01122 5mC)" \
-            "chr4" 39343000 39353000 \
-            "CANVAS: HG01122 AAAAG x656 full_mutation" "positive"
-    else
-        run_test "HG01122_RFC1" "$(ont_bam HG01122 5mC)" \
-            "chr4" 39343000 39353000 \
-            "CANVAS: HG01122 AAAAG x656 full_mutation" "positive"
-    fi
+    slice_bam "$(ont_bam HG01122 5mC)" "HG01122_RFC1.bam" "chr4:39343000-39353000"
+    run_test "HG01122_RFC1" "$(resolve_bam HG01122_RFC1.bam "$(ont_bam HG01122 5mC)")" \
+        "chr4" 39343000 39353000 \
+        "CANVAS: HG01122 AAAAG x656 full_mutation" "positive"
 fi
 
 # ── FGF14: Spinocerebellar ataxia 27B (chr13:102161577, GAA) ────────────
 
 if [[ "$TEST_FILTER" == "all" || "$TEST_FILTER" == "fgf14" ]]; then
     # HG00110: GAA x251, reduced_penetrance
-    run_test "HG00110_FGF14" "$(ont_bam HG00110 5mC)" \
+    slice_bam "$(ont_bam HG00110 5mC)" "HG00110_FGF14.bam" "chr13:102156000-102167000"
+    run_test "HG00110_FGF14" "$(resolve_bam HG00110_FGF14.bam "$(ont_bam HG00110 5mC)")" \
         "chr13" 102156000 102167000 \
         "SCA27B: HG00110 GAA x251 reduced_penetrance" "positive"
 
     # HG01501: GAA x275, reduced_penetrance
-    run_test "HG01501_FGF14" "$(ont_bam HG01501 5hmc_5mc_cg)" \
+    slice_bam "$(ont_bam HG01501 5hmc_5mc_cg)" "HG01501_FGF14.bam" "chr13:102156000-102167000"
+    run_test "HG01501_FGF14" "$(resolve_bam HG01501_FGF14.bam "$(ont_bam HG01501 5hmc_5mc_cg)")" \
         "chr13" 102156000 102167000 \
         "SCA27B: HG01501 GAA x275 reduced_penetrance" "positive"
 fi
