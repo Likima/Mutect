@@ -29,7 +29,8 @@ logger = logging.getLogger(__name__)
 # GRCh38 coordinates for all loci
 KNOWN_DISEASE_LOCI = [
     ("chr4", 3074876, 3074933, "CAG", "HTT", "Huntington disease", 35, 40),
-    ("chr9", 27573528, 27573546, "AAGGG", "RFC1", "CANVAS", 11, 400),
+    # RFC1: GRCh38 is chr4, NOT chr9
+    ("chr4", 39348425, 39348483, "AAAAG", "RFC1", "CANVAS", 11, 400),
     ("chr3", 63912684, 63912714, "CTG", "CNBP", "Myotonic dystrophy type 2", 26, 75),
     ("chr19", 46273462, 46273522, "CTG", "DMPK", "Myotonic dystrophy type 1", 34, 50),
     ("chrX", 147912050, 147912110, "CGG", "FMR1", "Fragile X syndrome", 44, 200),
@@ -49,6 +50,7 @@ KNOWN_DISEASE_LOCI = [
     ("chr16", 24613439, 24613488, "AARRG", "TNRC6A", "Oculopharyngodistal myopathy 4", 0, 90),
     ("chr1", 57367043, 57367100, "AAGGG", "DAB1", "Spinocerebellar ataxia 37", 0, 31),
     ("chr4", 159342525, 159342633, "GGC", "FRG1", "FSHD-related", 0, 100),
+    ("chr13", 102161577, 102161726, "GAA", "FGF14", "Spinocerebellar ataxia 27B", 249, 300),
 ]
 
 

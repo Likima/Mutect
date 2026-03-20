@@ -1,22 +1,28 @@
 #!/usr/bin/env bash
 # test_disease_loci.sh — Test the STR pipeline against known pathogenic TR loci
 #
-# Tests samples from the 1000 Genomes ONT dataset and GIAB HG002
-# against known disease-associated tandem repeat expansion loci.
+# Tests confirmed pathogenic repeat expansions from the 1000 Genomes ONT dataset
+# and normal alleles from GIAB HG002 as negative controls.
+#
+# True positives (confirmed by REDatlas / Gustafson et al. 2024):
+#   HG01122  ATXN10  ATTCT x1043  full_mutation    (SCA10)
+#   HG02252  ATXN10  ATTCT x955   full_mutation    (SCA10)
+#   HG02345  ATXN10  ATTCT x321   reduced_penetrance (SCA10)
+#   HG00105  RFC1    AAAAG x682   full_mutation    (CANVAS)
+#   HG01122  RFC1    AAAAG x656   full_mutation    (CANVAS)
+#   HG00110  FGF14   GAA   x251   reduced_penetrance (SCA27B)
+#   HG01501  FGF14   GAA   x275   reduced_penetrance (SCA27B)
+#
+# True negatives (HG002 is a healthy GIAB reference individual):
+#   HG002    HTT     CAG   ~17    normal
+#   HG002    FMR1    CGG   ~30    normal
 #
 # Usage:
 #   ./test_disease_loci.sh              # Run all tests
-#   ./test_disease_loci.sh atxn10       # Run only the ATXN10 test
-#   ./test_disease_loci.sh hg002        # Run only the HG002 tests
-#   ./test_disease_loci.sh htt          # Only HTT (Huntington)
-#   ./test_disease_loci.sh fmr1         # Only FMR1 (Fragile X)
-#   ./test_disease_loci.sh fxn          # Only FXN (Friedreich ataxia)
-#   ./test_disease_loci.sh dmpk         # Only DMPK (Myotonic dystrophy)
-#   ./test_disease_loci.sh rfc1         # Only RFC1 (CANVAS)
-#
-# Prerequisites:
-#   - uv (Python package manager)
-#   - Training data: output/str_variants.json, output/normal_sequences.json
+#   ./test_disease_loci.sh atxn10       # ATXN10 tests only
+#   ./test_disease_loci.sh rfc1         # RFC1 tests only
+#   ./test_disease_loci.sh fgf14        # FGF14 tests only
+#   ./test_disease_loci.sh hg002        # HG002 negative controls only
 #
 # Simplified one-liner (what this script does per test):
 #   uv run main.py --model-path output/str_model.joblib \
@@ -40,6 +46,18 @@ NORMAL_DATA="output/normal_sequences.json"
 OUTPUT_BASE="output/disease_tests"
 MODEL_PATH="output/str_model.joblib"
 
+# S3 base URL for 1KGP ONT BAMs
+ONT_BASE="https://1000g-ont.s3.amazonaws.com/ALIGNMENT_AND_ASSEMBLY_DATA/FIRST_100/NAPU_PIPELINE/HG38"
+
+# GIAB HG002 PacBio BAM
+HG002_BAM="https://downloads.pacbcloud.com/public/dataset/HG002-CpG-methylation-202202/HG002.GRCh38.haplotagged.bam"
+
+ont_bam() {
+    local sample="$1"
+    local suffix="$2"
+    echo "${ONT_BASE}/${sample}-ONT-hg38-R9-LSK110-guppy-sup-${suffix}/${sample}-ONT-hg38-R9-LSK110-guppy-sup-${suffix}.PMDV_FINAL.haplotagged.bam"
+}
+
 # ── Helper ──────────────────────────────────────────────────────────────────
 
 run_test() {
@@ -49,6 +67,7 @@ run_test() {
     local start="$4"
     local end="$5"
     local disease="$6"
+    local expected="$7"  # "positive" or "negative"
     local outdir="${OUTPUT_BASE}/${name}"
 
     echo ""
@@ -56,13 +75,12 @@ run_test() {
     echo -e "${CYAN}  TEST: ${name}${NC}"
     echo -e "${CYAN}  Disease: ${disease}${NC}"
     echo -e "${CYAN}  Region: ${chr}:${start}-${end}${NC}"
+    echo -e "${CYAN}  Expected: ${expected}${NC}"
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
     mkdir -p "$outdir"
 
-    # Use pre-trained model if available, otherwise train
     if [ -f "$MODEL_PATH" ]; then
-        echo -e "${GREEN}Using pre-trained model: ${MODEL_PATH}${NC}"
         uv run main.py \
             --model-path "$MODEL_PATH" \
             --predict-bam "$bam" \
@@ -70,9 +88,8 @@ run_test() {
             --predict-start "$start" \
             --predict-end "$end" \
             --output-dir "$outdir" \
-            2>&1 | tail -30
+            2>&1 | tail -20
     else
-        echo -e "${YELLOW}No pre-trained model found. Training + predicting...${NC}"
         uv run main.py \
             --str-data "$STR_DATA" \
             --normal-data "$NORMAL_DATA" \
@@ -82,152 +99,165 @@ run_test() {
             --predict-start "$start" \
             --predict-end "$end" \
             --output-dir "$outdir" \
-            2>&1 | tail -30
+            2>&1 | tail -20
     fi
 
-    # Show results summary
+    # Show results
     if [ -f "${outdir}/predictions_summary.json" ]; then
         echo ""
-        echo -e "${GREEN}Results for ${name}:${NC}"
-        python3 -c "
-import json, sys
+        python -c "
+import json
 with open('${outdir}/predictions_summary.json') as f:
     s = json.load(f)
-print(f\"  Total sequences: {s['total_sequences']}\")
-print(f\"  Predicted STRs:  {s['predicted_strs']}\")
-print(f\"  Threshold:       {s['threshold']}\")
+strs = s['predicted_strs']
+total = s['total_sequences']
+expected = '${expected}'
+icon = '✓' if (expected == 'positive' and strs > 0) or (expected == 'negative' and strs == 0) else '✗'
+status = 'PASS' if icon == '✓' else 'FAIL'
+print(f'  {icon} {status}: {strs}/{total} STRs detected (expected: {expected})')
 ca = s.get('clinical_annotations', {})
 if ca.get('total_disease_matches', 0) > 0:
-    print(f\"  Disease matches: {ca['total_disease_matches']}\")
     for d, c in ca.get('disease_matches', {}).items():
-        print(f\"    - {d}: {c}\")
-top = s.get('top_20_str_predictions', [])
-for i, p in enumerate(top[:5]):
-    motif = p.get('repeat_motif', 'N/A')
+        print(f'    Disease: {d} ({c} match)')
+for p in s.get('top_20_str_predictions', [])[:3]:
+    motif = p.get('repeat_motif', '?')
     prob = p.get('probability', 0)
-    disease = p.get('redatlas_disease') or ''
-    ds = f' [{disease}]' if disease else ''
-    print(f\"  #{i+1}: motif={motif}, prob={prob:.4f}{ds}\")
-" 2>/dev/null || echo -e "${YELLOW}  (Could not parse summary)${NC}"
+    rc = p.get('repeat_count', 0)
+    ac = p.get('redatlas_allele_class', '')
+    print(f'    Motif={motif} x{rc}, prob={prob:.4f}, class={ac}')
+" 2>/dev/null || true
     fi
-
-    echo -e "${GREEN}  Output: ${outdir}/${NC}"
 }
 
 # ── Ensure training data exists ─────────────────────────────────────────────
 
 if [ ! -f "$STR_DATA" ] || [ ! -f "$NORMAL_DATA" ]; then
-    echo -e "${RED}Training data not found:${NC}"
-    echo "  $STR_DATA"
-    echo "  $NORMAL_DATA"
-    echo "Run the default pipeline first to generate training data."
+    echo -e "${RED}Training data not found. Run the default pipeline first.${NC}"
     exit 1
 fi
 
-# ── Train model once if not already trained ─────────────────────────────────
+# ── Train model once if not present ─────────────────────────────────────────
 
 if [ ! -f "$MODEL_PATH" ]; then
     echo -e "${YELLOW}Training model (one-time)...${NC}"
     uv run main.py \
         --str-data "$STR_DATA" \
         --normal-data "$NORMAL_DATA" \
-        --train \
-        --output-dir output
-    echo -e "${GREEN}Model trained and saved to ${MODEL_PATH}${NC}"
+        --train --output-dir output
 fi
 
-# ── Define test cases ───────────────────────────────────────────────────────
-
-# 1000 Genomes ONT S3 base URL
-ONT_BASE="https://1000g-ont.s3.amazonaws.com/ALIGNMENT_AND_ASSEMBLY_DATA/FIRST_100/NAPU_PIPELINE/HG38"
-
-# GIAB HG002 PacBio base URL
-HG002_BAM="https://downloads.pacbcloud.com/public/dataset/HG002-CpG-methylation-202202/HG002.GRCh38.haplotagged.bam"
-
-# Local BAM if available
-HG01122_LOCAL="HG01122_ATXN10.bam"
-
 TEST_FILTER="${1:-all}"
-
 mkdir -p "$OUTPUT_BASE"
 
 echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
 echo -e "${GREEN}  STR Disease Loci Test Suite${NC}"
 echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
 
-# ── Test 1: ATXN10 — HG01122 (SCA10, >1000 ATTCT repeats) ──────────────
+# ═══════════════════════════════════════════════════════════════════════════
+# TRUE POSITIVES — confirmed pathogenic expansions
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ── ATXN10: Spinocerebellar ataxia 10 (chr22:45795355, ATTCT) ────────────
 
 if [[ "$TEST_FILTER" == "all" || "$TEST_FILTER" == "atxn10" ]]; then
-    if [ -f "$HG01122_LOCAL" ]; then
-        run_test "HG01122_ATXN10_local" \
-            "$HG01122_LOCAL" \
+    # HG01122: ATTCT x1043, full_mutation
+    if [ -f "HG01122_ATXN10.bam" ]; then
+        run_test "HG01122_ATXN10" "HG01122_ATXN10.bam" \
             "chr22" 45790000 45800000 \
-            "Spinocerebellar ataxia 10 (ATTCT expansion)"
+            "SCA10: HG01122 ATTCT x1043 full_mutation" "positive"
     else
-        run_test "HG01122_ATXN10_remote" \
-            "${ONT_BASE}/HG01122-ONT-hg38-R9-LSK110-guppy-sup-5mC/HG01122-ONT-hg38-R9-LSK110-guppy-sup-5mC.PMDV_FINAL.haplotagged.bam" \
+        run_test "HG01122_ATXN10" "$(ont_bam HG01122 5mC)" \
             "chr22" 45790000 45800000 \
-            "Spinocerebellar ataxia 10 (ATTCT expansion)"
+            "SCA10: HG01122 ATTCT x1043 full_mutation" "positive"
+    fi
+
+    # HG02252: ATTCT x955 (full_mutation) + x511 (reduced_penetrance)
+    run_test "HG02252_ATXN10" "$(ont_bam HG02252 5mC)" \
+        "chr22" 45790000 45800000 \
+        "SCA10: HG02252 ATTCT x955 full_mutation" "positive"
+
+    # HG02345: ATTCT x321, reduced_penetrance
+    run_test "HG02345_ATXN10" "$(ont_bam HG02345 5mC)" \
+        "chr22" 45790000 45800000 \
+        "SCA10: HG02345 ATTCT x321 reduced_penetrance" "positive"
+fi
+
+# ── RFC1: CANVAS (chr4:39348425, AAAAG) ─────────────────────────────────
+
+if [[ "$TEST_FILTER" == "all" || "$TEST_FILTER" == "rfc1" ]]; then
+    # HG00105: AAAAG x682, full_mutation
+    run_test "HG00105_RFC1" "$(ont_bam HG00105 5mC)" \
+        "chr4" 39343000 39353000 \
+        "CANVAS: HG00105 AAAAG x682 full_mutation" "positive"
+
+    # HG01122: AAAAG x656, full_mutation (same sample as ATXN10!)
+    if [ -f "HG01122_ATXN10.bam" ]; then
+        # Can't use the ATXN10 BAM slice for RFC1 — need the full BAM
+        run_test "HG01122_RFC1" "$(ont_bam HG01122 5mC)" \
+            "chr4" 39343000 39353000 \
+            "CANVAS: HG01122 AAAAG x656 full_mutation" "positive"
+    else
+        run_test "HG01122_RFC1" "$(ont_bam HG01122 5mC)" \
+            "chr4" 39343000 39353000 \
+            "CANVAS: HG01122 AAAAG x656 full_mutation" "positive"
     fi
 fi
 
-# ── Test 2: HG002 — HTT locus (Huntington, normal allele) ──────────────
+# ── FGF14: Spinocerebellar ataxia 27B (chr13:102161577, GAA) ────────────
 
-if [[ "$TEST_FILTER" == "all" || "$TEST_FILTER" == "hg002" || "$TEST_FILTER" == "htt" ]]; then
-    run_test "HG002_HTT" \
-        "$HG002_BAM" \
+if [[ "$TEST_FILTER" == "all" || "$TEST_FILTER" == "fgf14" ]]; then
+    # HG00110: GAA x251, reduced_penetrance
+    run_test "HG00110_FGF14" "$(ont_bam HG00110 5mC)" \
+        "chr13" 102156000 102167000 \
+        "SCA27B: HG00110 GAA x251 reduced_penetrance" "positive"
+
+    # HG01501: GAA x275, reduced_penetrance
+    run_test "HG01501_FGF14" "$(ont_bam HG01501 5hmc_5mc_cg)" \
+        "chr13" 102156000 102167000 \
+        "SCA27B: HG01501 GAA x275 reduced_penetrance" "positive"
+fi
+
+# ═══════════════════════════════════════════════════════════════════════════
+# TRUE NEGATIVES — HG002 healthy reference, normal alleles
+# ═══════════════════════════════════════════════════════════════════════════
+
+if [[ "$TEST_FILTER" == "all" || "$TEST_FILTER" == "hg002" ]]; then
+    # HTT: Huntington disease (normal ~17 CAG)
+    run_test "HG002_HTT" "$HG002_BAM" \
         "chr4" 3070000 3080000 \
-        "Huntington disease locus (HTT CAG repeat, normal in HG002)"
-fi
+        "Huntington: HG002 normal allele" "negative"
 
-# ── Test 3: HG002 — FMR1 locus (Fragile X, normal allele) ──────────────
-
-if [[ "$TEST_FILTER" == "all" || "$TEST_FILTER" == "hg002" || "$TEST_FILTER" == "fmr1" ]]; then
-    run_test "HG002_FMR1" \
-        "$HG002_BAM" \
+    # FMR1: Fragile X (normal ~30 CGG)
+    run_test "HG002_FMR1" "$HG002_BAM" \
         "chrX" 147907000 147917000 \
-        "Fragile X syndrome locus (FMR1 CGG repeat, normal in HG002)"
+        "Fragile X: HG002 normal allele" "negative"
 fi
 
-# ── Test 4: HG002 — FXN locus (Friedreich ataxia, normal allele) ───────
-
-if [[ "$TEST_FILTER" == "all" || "$TEST_FILTER" == "hg002" || "$TEST_FILTER" == "fxn" ]]; then
-    run_test "HG002_FXN" \
-        "$HG002_BAM" \
-        "chr9" 69032000 69042000 \
-        "Friedreich ataxia locus (FXN GAA repeat, normal in HG002)"
-fi
-
-# ── Test 5: HG002 — DMPK locus (Myotonic dystrophy 1) ──────────────────
-
-if [[ "$TEST_FILTER" == "all" || "$TEST_FILTER" == "hg002" || "$TEST_FILTER" == "dmpk" ]]; then
-    run_test "HG002_DMPK" \
-        "$HG002_BAM" \
-        "chr19" 46268000 46278000 \
-        "Myotonic dystrophy 1 locus (DMPK CTG repeat, normal in HG002)"
-fi
-
-# ── Test 6: HG002 — RFC1 locus (CANVAS) ────────────────────────────────
-
-if [[ "$TEST_FILTER" == "all" || "$TEST_FILTER" == "hg002" || "$TEST_FILTER" == "rfc1" ]]; then
-    run_test "HG002_RFC1" \
-        "$HG002_BAM" \
-        "chr9" 27568000 27578000 \
-        "CANVAS locus (RFC1 AAGGG repeat, normal in HG002)"
-fi
-
-# ── Summary ─────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════
+# Summary
+# ═══════════════════════════════════════════════════════════════════════════
 
 echo ""
 echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
 echo -e "${GREEN}  All tests complete. Results in: ${OUTPUT_BASE}/${NC}"
 echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
 echo ""
-echo "To view results:"
-echo "  cat ${OUTPUT_BASE}/*/predictions_summary.json | python3 -m json.tool"
-echo ""
-echo "Quick one-liner to run a single test:"
-echo "  uv run main.py --model-path output/str_model.joblib \\"
-echo "    --predict-bam <BAM_FILE_OR_URL> \\"
-echo "    --predict-chr chr22 --predict-start 45790000 --predict-end 45800000 \\"
-echo "    --output-dir output/my_test"
+echo "Quick summary:"
+python -c "
+import json, os, glob
+results = []
+for p in sorted(glob.glob('${OUTPUT_BASE}/*/predictions_summary.json')):
+    name = os.path.basename(os.path.dirname(p))
+    with open(p) as f:
+        s = json.load(f)
+    strs = s['predicted_strs']
+    total = s['total_sequences']
+    diseases = list(s.get('clinical_annotations', {}).get('disease_matches', {}).keys())
+    disease_str = diseases[0] if diseases else '-'
+    results.append((name, total, strs, disease_str))
+
+print(f'  {\"Test\":<30s} {\"Seqs\":>5s} {\"STRs\":>5s}  Disease')
+print(f'  {\"-\"*30} {\"-\"*5} {\"-\"*5}  {\"-\"*30}')
+for name, total, strs, disease in results:
+    print(f'  {name:<30s} {total:>5d} {strs:>5d}  {disease}')
+" 2>/dev/null || true
