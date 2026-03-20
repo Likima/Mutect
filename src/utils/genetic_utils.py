@@ -277,10 +277,21 @@ def detect_and_merge_duplicate_strs(
                 }
                 
                 # Copy other metadata from first STR
-                for key in ['read_name', 'mapping_quality', 'cigar_string', 
+                for key in ['read_name', 'mapping_quality', 'cigar_string',
                            'is_paired', 'is_proper_pair', 'is_reverse']:
                     if key in str1:
                         merged_str[key] = str1[key]
+
+                # Copy windowed prediction metadata from the highest-probability window
+                best_window = max(merged_group, key=lambda s: s.get('str_probability', 0.0))
+                for key in ['window_start', 'window_end', 'window_genomic_start',
+                           'window_genomic_end', 'windowed_prediction', 'read_length',
+                           'repeat_motif', 'repeat_count', 'repeat_length',
+                           'repeat_purity', 'repeat_coverage', 'has_repeat',
+                           'canonical_fraction', 'interruption_count',
+                           'reference_name']:
+                    if key in best_window:
+                        merged_str[key] = best_window[key]
                 
                 # Reclassify if requested
                 if reclassify_merged and classifier is not None:
