@@ -62,7 +62,7 @@ features:
     enabled: true
     sizes: [3, 4]  # tri-mers and tetra-mers
 
-  # CIGAR-string derived features
+  # CIGAR-string derived features (only used when CIGAR data is present)
   cigar:
     enabled: true
 

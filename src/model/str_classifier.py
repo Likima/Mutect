@@ -362,14 +362,18 @@ class STRClassifier:
             for k in self._kmer_sizes:
                 features.update(_kmer_feature_vector(sequence, k))
 
-        # 6. CIGAR-derived features
+        # 6. Repeat-to-length ratio (important for windowed long-read detection)
+        seq_len = len(sequence) if sequence else 1
+        features["repeat_fraction"] = features.get("max_repeat_length", 0) / seq_len
+        features["trmotif_coverage_x_purity"] = (
+            features.get("trmotif_coverage", 0) * features.get("trmotif_purity", 0)
+        )
+
+        # 7. CIGAR-derived features (only when CIGAR data is available)
         if self._use_cigar:
             cigar = seq_dict.get("cigar_string", seq_dict.get("cigar", None))
-            features.update(_parse_cigar_features(cigar))
-
-        # 7. Mapping quality (if available)
-        mq = seq_dict.get("mapping_quality")
-        features["mapping_quality"] = float(mq) if mq is not None else 0.0
+            if cigar:  # Only add when we actually have CIGAR data
+                features.update(_parse_cigar_features(cigar))
 
         return features
 
@@ -575,9 +579,16 @@ class STRClassifier:
         }
 
     @staticmethod
-    def _optimal_threshold(y_true: np.ndarray, y_proba: np.ndarray) -> float:
-        """Find threshold that maximises Youden's J statistic (sensitivity + specificity - 1)."""
-        thresholds = np.linspace(0.1, 0.9, 81)
+    def _optimal_threshold(
+        y_true: np.ndarray, y_proba: np.ndarray, min_threshold: float = 0.4
+    ) -> float:
+        """Find threshold that maximises Youden's J statistic.
+
+        A minimum floor of 0.4 is enforced to prevent over-sensitive thresholds
+        that cause false positives on real-world long-read data where the training
+        distribution is much cleaner than production data.
+        """
+        thresholds = np.linspace(max(0.1, min_threshold), 0.9, 81)
         best_j, best_t = -1.0, 0.5
         for t in thresholds:
             pred = (y_proba >= t).astype(int)
@@ -807,6 +818,32 @@ class STRClassifier:
     # Windowed prediction for long reads
     # ------------------------------------------------------------------
 
+    def _score_window(
+        self, window_seq: str, w_start: int, w_end: int, read_start: int
+    ) -> Tuple[float, Dict[str, Any]]:
+        """Score a single window and return (probability, result_dict)."""
+        window_dict = {"sequence": window_seq, "cigar_string": None}
+        proba = self.predict_proba([window_dict])[0]
+
+        repeat_info = self._detect_tandem_repeats(window_seq)
+        trmotif_result = self._trmotif.decompose(window_seq)
+
+        result = {
+            "window_start": w_start,
+            "window_end": w_end,
+            "window_genomic_start": read_start + w_start,
+            "window_genomic_end": read_start + w_end,
+            "repeat_motif": trmotif_result.get("motif") or repeat_info.get("repeat_unit", "N/A"),
+            "repeat_count": int(trmotif_result.get("total_copies") or repeat_info.get("max_repeat_count", 0)),
+            "repeat_length": int(repeat_info.get("max_repeat_length", 0)),
+            "repeat_purity": float(trmotif_result.get("purity") or repeat_info.get("repeat_purity", 0.0)),
+            "repeat_coverage": float(trmotif_result.get("coverage") or repeat_info.get("total_repeat_coverage", 0.0)),
+            "has_repeat": bool(repeat_info.get("has_repeat", False)),
+            "canonical_fraction": float(trmotif_result.get("canonical_fraction", 0.0)),
+            "interruption_count": int(trmotif_result.get("interruption_count", 0)),
+        }
+        return float(proba), result
+
     def predict_with_motifs_windowed(
         self,
         sequences: List[Dict[str, Any]],
@@ -814,21 +851,14 @@ class STRClassifier:
         step_size: int = 2000,
         long_read_threshold: int = 10000,
     ) -> List[Dict[str, Any]]:
-        """Predict STRs using a sliding window for long reads.
+        """Predict STRs using multi-scale sliding windows for long reads.
 
-        Long reads (>long_read_threshold bp) are scanned in overlapping windows.
-        Each window is classified independently.  If any window is predicted as
-        STR, the read is marked as containing an STR and the best window's
-        motif/probability is reported.  Short reads are classified normally.
+        Long reads (>long_read_threshold bp) are scanned in two passes:
+        1. Coarse pass: large windows (window_size) with step_size stride
+        2. Refinement pass: around the best coarse hit, scan with smaller
+           1000bp windows at 500bp steps to precisely locate the repeat
 
-        Args:
-            sequences: List of sequence dicts.
-            window_size: Window length in bp for scanning long reads.
-            step_size: Step between windows (overlap = window_size - step_size).
-            long_read_threshold: Reads longer than this use windowed prediction.
-
-        Returns:
-            List of prediction dicts (same schema as predict_with_motifs).
+        Short reads are classified normally.
         """
         if self.model is None:
             raise ValueError("Model not trained yet. Call train() first.")
@@ -847,7 +877,6 @@ class STRClassifier:
                 short_seqs.append(s)
                 short_indices.append(i)
 
-        # Results array in original order
         results: List[Optional[Dict[str, Any]]] = [None] * len(sequences)
 
         # --- Short reads: standard prediction ---
@@ -856,83 +885,61 @@ class STRClassifier:
             for idx, res in zip(short_indices, short_results):
                 results[idx] = res
 
-        # --- Long reads: sliding window ---
+        # --- Long reads: multi-scale sliding window ---
         if long_seqs:
-            n_long = len(long_seqs)
-            print(f"\nWindowed prediction: {n_long} long reads (>{long_read_threshold} bp)")
-            print(f"  Window={window_size} bp, Step={step_size} bp")
+            print(f"\nWindowed prediction: {len(long_seqs)} long reads (>{long_read_threshold} bp)")
+            print(f"  Coarse: {window_size} bp / {step_size} bp step")
+            print(f"  Refine: 1000 bp / 500 bp step (around best hit)")
 
         for orig_idx, seq_dict in zip(long_indices, long_seqs):
             sequence = seq_dict.get("sequence", "")
             seq_len = len(sequence)
-            chrom = seq_dict.get("chromosome", seq_dict.get("reference_name", ""))
             read_start = int(seq_dict.get("position", seq_dict.get("reference_start", 0)))
 
             best_prob = 0.0
-            best_window_result: Optional[Dict[str, Any]] = None
+            best_result: Optional[Dict[str, Any]] = None
+            best_w_start = 0
 
-            # Slide window across the read
+            # ── Pass 1: Coarse scan ──
             for w_start in range(0, seq_len - window_size + 1, step_size):
-                w_end = w_start + window_size
-                window_seq = sequence[w_start:w_end]
+                prob, res = self._score_window(
+                    sequence[w_start : w_start + window_size],
+                    w_start, w_start + window_size, read_start,
+                )
+                if prob > best_prob:
+                    best_prob = prob
+                    best_result = res
+                    best_w_start = w_start
 
-                window_dict = {
-                    "sequence": window_seq,
-                    "cigar_string": None,
-                    "mapping_quality": seq_dict.get("mapping_quality"),
-                }
+            # Check tail window
+            if seq_len > window_size:
+                tail_start = seq_len - window_size
+                prob, res = self._score_window(
+                    sequence[tail_start:], tail_start, seq_len, read_start,
+                )
+                if prob > best_prob:
+                    best_prob = prob
+                    best_result = res
+                    best_w_start = tail_start
 
-                proba = self.predict_proba([window_dict])[0]
+            # ── Pass 2: Refinement around best hit ──
+            # Use smaller 1000bp windows around the best coarse window
+            # to pinpoint the repeat region more precisely
+            if best_prob > 0.15:
+                refine_size = 1000
+                refine_step = 500
+                # Scan within +/- window_size of the best coarse hit
+                refine_start = max(0, best_w_start - window_size)
+                refine_end = min(seq_len, best_w_start + window_size + window_size)
 
-                if proba > best_prob:
-                    best_prob = proba
-                    repeat_info = self._detect_tandem_repeats(window_seq)
-                    trmotif_result = self._trmotif.decompose(window_seq)
-
-                    best_window_result = {
-                        "window_start": w_start,
-                        "window_end": w_end,
-                        "window_genomic_start": read_start + w_start,
-                        "window_genomic_end": read_start + w_end,
-                        "repeat_motif": trmotif_result.get("motif") or repeat_info.get("repeat_unit", "N/A"),
-                        "repeat_count": int(trmotif_result.get("total_copies") or repeat_info.get("max_repeat_count", 0)),
-                        "repeat_length": int(repeat_info.get("max_repeat_length", 0)),
-                        "repeat_purity": float(trmotif_result.get("purity") or repeat_info.get("repeat_purity", 0.0)),
-                        "repeat_coverage": float(trmotif_result.get("coverage") or repeat_info.get("total_repeat_coverage", 0.0)),
-                        "has_repeat": bool(repeat_info.get("has_repeat", False)),
-                        "canonical_fraction": float(trmotif_result.get("canonical_fraction", 0.0)),
-                        "interruption_count": int(trmotif_result.get("interruption_count", 0)),
-                    }
-
-            # Also check last partial window if sequence doesn't divide evenly
-            remainder = seq_len % step_size
-            if remainder > 0 and seq_len > window_size:
-                tail_start = max(0, seq_len - window_size)
-                window_seq = sequence[tail_start:]
-                window_dict = {
-                    "sequence": window_seq,
-                    "cigar_string": None,
-                    "mapping_quality": seq_dict.get("mapping_quality"),
-                }
-                proba = self.predict_proba([window_dict])[0]
-                if proba > best_prob:
-                    best_prob = proba
-                    repeat_info = self._detect_tandem_repeats(window_seq)
-                    trmotif_result = self._trmotif.decompose(window_seq)
-                    best_window_result = {
-                        "window_start": tail_start,
-                        "window_end": seq_len,
-                        "window_genomic_start": read_start + tail_start,
-                        "window_genomic_end": read_start + seq_len,
-                        "repeat_motif": trmotif_result.get("motif") or repeat_info.get("repeat_unit", "N/A"),
-                        "repeat_count": int(trmotif_result.get("total_copies") or repeat_info.get("max_repeat_count", 0)),
-                        "repeat_length": int(repeat_info.get("max_repeat_length", 0)),
-                        "repeat_purity": float(trmotif_result.get("purity") or repeat_info.get("repeat_purity", 0.0)),
-                        "repeat_coverage": float(trmotif_result.get("coverage") or repeat_info.get("total_repeat_coverage", 0.0)),
-                        "has_repeat": bool(repeat_info.get("has_repeat", False)),
-                        "canonical_fraction": float(trmotif_result.get("canonical_fraction", 0.0)),
-                        "interruption_count": int(trmotif_result.get("interruption_count", 0)),
-                    }
+                for w_start in range(refine_start, refine_end - refine_size + 1, refine_step):
+                    prob, res = self._score_window(
+                        sequence[w_start : w_start + refine_size],
+                        w_start, w_start + refine_size, read_start,
+                    )
+                    if prob > best_prob:
+                        best_prob = prob
+                        best_result = res
 
             is_str = best_prob >= self.threshold
             result = {
@@ -942,8 +949,8 @@ class STRClassifier:
                 "windowed_prediction": True,
                 "read_length": seq_len,
             }
-            if best_window_result:
-                result.update(best_window_result)
+            if best_result:
+                result.update(best_result)
             else:
                 result.update({
                     "repeat_motif": "N/A", "repeat_count": 0, "repeat_length": 0,

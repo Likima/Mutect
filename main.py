@@ -55,13 +55,19 @@ def run_pipeline(args):
     cfg = _load_yaml_config(config_path) if Path(config_path).exists() else {}
     model_cfg = cfg.get("model", {})
 
-    # Step 1: Load or extract training data
-    if args.str_data and args.normal_data:
+    # Step 1: Load or extract training data (skip if using pre-trained model)
+    from src.model.str_classifier import STRClassifier
+
+    training_data = None
+
+    if args.model_path and Path(args.model_path).exists():
+        # Pre-trained model: skip training data entirely
+        logger.info("[Step 1] Skipping data loading (using pre-trained model)")
+    elif args.str_data and args.normal_data:
         logger.info("[Step 1] Loading pre-labeled data...")
         str_sequences = load_labeled_data(args.str_data)
         normal_sequences = load_labeled_data(args.normal_data)
         training_data = create_balanced_dataset(str_sequences, normal_sequences)
-
     elif args.bam_file:
         logger.info("[Step 1] Extracting sequences from BAM file...")
         output_path = f"{args.output_dir}/extracted_sequences.json"
@@ -81,16 +87,14 @@ def run_pipeline(args):
         logger.info("Sequences extracted but not labeled. Please label them manually.")
         logger.info("Set 'is_str': true or false for each sequence.")
         return 0
-
     else:
         logger.error("Must provide either:")
+        logger.error("  - Pre-trained model (--model-path)")
         logger.error("  - Pre-labeled data (--str-data and --normal-data)")
         logger.error("  - BAM file for extraction (--bam-file)")
         return 1
 
     # Step 2: Train classifier (or load pre-trained model)
-    from src.model.str_classifier import STRClassifier
-
     if args.model_path and Path(args.model_path).exists():
         logger.info(f"[Step 2] Loading pre-trained model from {args.model_path}")
         classifier = STRClassifier.load(args.model_path)
